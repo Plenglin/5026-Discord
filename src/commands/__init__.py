@@ -1,0 +1,1 @@
+from .swear_finder import SwearJar

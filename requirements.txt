@@ -1,0 +1,3 @@
+git+https://github.com/Plenglin/bot_framework.git
+discord.py>=0.16.7
+psycopg2>=2.7.1
