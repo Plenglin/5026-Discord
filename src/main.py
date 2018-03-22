@@ -1,14 +1,18 @@
+import logging
 import os
 
-import bot_framework
-import logging
+from discord.ext.commands import Bot
 
-import commands
-
+bot = Bot(description='Ghost of Jank Memes', command_prefix='!', pm_help=True)
 
 logging.basicConfig(level=logging.DEBUG)
-client = bot_framework.Client()
-client.register_listener(commands.SwearJar)
-client.register_listener(bot_framework.util.OnStart, bot_framework.util.HelpCommand)
+log = logging.getLogger(__name__)
 
-client.loop.run_until_complete(client.start(os.environ.get('TOKEN')))
+
+@bot.event
+async def on_ready():
+    log.info(f'Logged in as {bot.user.name} with ID {bot.user.id}')
+
+
+bot.load_extension('swear_finder')
+bot.run(os.environ.get('TOKEN'))
