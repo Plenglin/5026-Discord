@@ -103,10 +103,13 @@ class MarkovCog:
             log.debug(f'Finding channels in {server}')
             for channel in server.channels:
                 log.debug(f'Finding messages in {channel}')
-                async for msg in self.bot.logs_from(channel, limit=CHANNEL_MSG_LIMIT):
-                    log.debug(f'Found message in {channel}')
-                    self.user_chains[msg.author.id].add_message(msg)
-        log.info('Finished building!')
+                try:
+                    async for msg in self.bot.logs_from(channel, limit=CHANNEL_MSG_LIMIT):
+                        log.debug(f'Found message in {channel}')
+                        self.user_chains[msg.author.id].add_message(msg)
+                except discord.Forbidden as e:
+                    log.debug(f'Error: cannot read from {channel} because forbidden')
+        log.info('Finished building markov chains!')
 
     async def on_message(self, msg: Message):
         self.user_chains[msg.author.id].add_message(msg)
