@@ -14,8 +14,9 @@ MESSAGES = [
     'hey hey be nice {mention}',
     'no swears {mention}',
     'censor yourself {mention}',
-    'you know {mention}... dont... say... swears',
-    'i need to ask you to stop {mention}, that swearing is making people nervous'
+    "you know {mention}... don't... say... swears",
+    'i need to ask you to stop {mention}, that swearing is making people nervous',
+    "{mention} it's time to stop"
 ]
 
 log = logging.getLogger(__name__)
