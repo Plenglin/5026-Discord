@@ -36,7 +36,7 @@ class CancerFinder:
                         log_channel,
                         f"**Removed message from {message.author.name}:** {message.content}\n**Reason:** it's cancer"
                     )
-                await asyncio.sleep(3)
+                await asyncio.sleep(30)
                 await self.bot.remove_roles(message.author, role)
                 await self.bot.delete_message(mute_msg)
 
