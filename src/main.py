@@ -15,4 +15,5 @@ async def on_ready():
 
 
 bot.load_extension('swear_finder')
+bot.load_extension('cancer_finder')
 bot.run(os.environ.get('TOKEN'))
