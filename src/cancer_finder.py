@@ -24,6 +24,7 @@ class CancerFinder:
 
 
 def setup(bot):
+    log.debug(f'Adding to {bot}')
     bot.add_cog(CancerFinder(bot))
 
 

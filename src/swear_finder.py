@@ -49,7 +49,13 @@ class SwearJar:
             self.connection.commit()
 
     @commands.command()
-    async def swearcount(self, user: discord.Member):
+    async def swearcount(self, user: discord.User):
+        """
+        Find out how much a certain person has sweared: >swears @user
+
+        :param user: the user
+        :return:
+        """
         cursor = self.connection.cursor()
         cursor.execute("SELECT times_sweared FROM swears WHERE discord_id = '{}'".format(user.id))
         data = cursor.fetchone()
@@ -81,4 +87,5 @@ class SwearJar:
 
 
 def setup(bot):
+    log.debug(f'Adding to {bot}')
     bot.add_cog(SwearJar(bot))
