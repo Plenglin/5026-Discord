@@ -3,7 +3,7 @@ import os
 
 from discord.ext.commands import Bot
 
-bot = Bot(description='Ghost of Jank Memes', command_prefix='!', pm_help=True)
+bot = Bot(description='Ghost of Jank Memes', command_prefix='>', pm_help=True)
 
 logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
