@@ -1,0 +1,8 @@
+{
+  "name": "JankMemesBot",
+  "description": "A bot for Iron Panthers discord servers",
+  "image": "heroku/python",
+  "repository": "https://github.com/Plenglin/5026-Discord",
+  "keywords": ["python", "discord"],
+  "addons": ["heroku-config"]
+}
