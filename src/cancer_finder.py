@@ -34,7 +34,7 @@ class CancerFinder:
                     log.info('We can log our action!')
                     await self.bot.send_message(
                         log_channel,
-                        f"**Removed message from {message.author.name} in #${message.channel.name}:** {message.content}\n**Reason:** it's cancer"
+                        f"**Removed message from {message.author.name} in #{message.channel.name}:** {message.content}\n**Reason:** it's cancer"
                     )
                 await asyncio.sleep(30)
                 await self.bot.remove_roles(message.author, role)
