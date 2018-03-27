@@ -6,8 +6,10 @@ from collections import defaultdict, Counter
 from typing import Dict, DefaultDict
 
 import discord
+import os
 from discord.ext import commands
 from discord import Message
+from discord.ext.commands import Bot
 
 log = logging.getLogger(__name__)
 
@@ -17,8 +19,7 @@ PUNCTUABLE = string.punctuation.replace("'", '')
 
 
 CHANNEL_MSG_LIMIT = 500
-MIN_COMPLETENESS = 200
-MIN_WORDS_IN_MSG = 5
+MIN_COMPLETENESS = 50
 
 
 def tokenize(text):
@@ -55,29 +56,31 @@ class MarkovChain:
         self.completeness = 0
 
     def add(self, sentence, stops='.?!'):
-        tokens = tokenize(sentence.lower())
+        tokens = [None] + tokenize(sentence.lower()) + [None]
         for i in range(len(tokens) - 1):
             token, following = tokens[i], tokens[i + 1]
             self.table[token][following] += 1
-            if token in stops:
+            if token is None or token in stops:
                 self.table[None][following] += 1
                 self.completeness += 0.25
             else:
                 self.completeness += 1
 
     def pick_random_after(self, word, allow_none=True):
-        counter = self.table[word]
+        counter = self.table[word].copy()
         if not allow_none:
             del counter[None]
         words = counter.values()
         i = random.randrange(sum(words))
         return next(itertools.islice(counter.elements(), i, None))
 
-    def generate_indefinite(self, stop_at='.!?'):
+    def generate_indefinite(self, limit=100, stop_at=list('.!?') + [None]):
         word = self.pick_random_after(None, allow_none=False)
-        while word not in stop_at:
+        i = 0
+        while word not in stop_at and i < limit:
             yield word
             word = self.pick_random_after(word)
+            i += 1
 
 
 class MarkovUser:
@@ -86,8 +89,14 @@ class MarkovUser:
         self.chain = MarkovChain()
 
     def add_message(self, msg: Message):
-        if msg.content.count(' ') < MIN_WORDS_IN_MSG - 1:
-            self.chain.add(msg.content)
+        print(msg.clean_content)
+        s = msg.clean_content
+        if len(s) > 0 and s[0] in WORD_CHARS:
+            log.debug(f'Adding {s}')
+            self.chain.add(s)
+
+    def __repr__(self):
+        return repr(self.chain.table)
 
 
 class MarkovCog:
@@ -105,21 +114,25 @@ class MarkovCog:
                 log.debug(f'Finding messages in {channel}')
                 try:
                     async for msg in self.bot.logs_from(channel, limit=CHANNEL_MSG_LIMIT):
-                        log.debug(f'Found message in {channel}')
-                        self.user_chains[msg.author.id].add_message(msg)
+                        log.debug(f'Found message in {server}#{channel} from {msg.author.id}')
+                        if msg.author.id != self.bot.user.id:
+                            self.user_chains[msg.author.id].add_message(msg)
                 except discord.Forbidden as e:
                     log.debug(f'Error: cannot read from {channel} because forbidden')
-        log.info('Finished building markov chains!')
+        log.info('Finished building markov chains: %s', self.user_chains)
 
     async def on_message(self, msg: Message):
-        self.user_chains[msg.author.id].add_message(msg)
+        if msg.author.id != self.bot.user.id:
+            self.user_chains[msg.author.id].add_message(msg)
 
     @commands.command()
     async def markov(self, user: discord.Member):
         mc = self.user_chains[user.id].chain
+        log.debug(f'{user.id} has completeness {mc.completeness}')
         if mc.completeness > MIN_COMPLETENESS:
             tokens = mc.generate_indefinite()
-            await self.bot.say(untokenize(tokens))
+            log.debug('made tokens %s', tokens)
+            await self.bot.say(f'"{untokenize(tokens)}" --_{user.mention}_')
         else:
             await self.bot.say(f"not enough info on {user.mention}")
 
@@ -129,25 +142,26 @@ def setup(bot):
 
 
 if __name__ == '__main__':
-    corpus = 'What the fuck did you just fucking say about me, you little bitch? I’ll have you know I graduated top ' \
-             'of my class in the Navy Seals, and I’ve been involved in numerous secret raids on Al-Quaeda, ' \
-             'and I have over 300 confirmed kills. I am trained in gorilla warfare and I’m the top sniper in the ' \
-             'entire US armed forces. You are nothing to me but just another target. I will wipe you the fuck out ' \
-             'with precision the likes of which has never been seen before on this Earth, mark my fucking words. You ' \
-             'think you can get away with saying that shit to me over the Internet? Think again, fucker. As we speak ' \
-             'I am contacting my secret network of spies across the USA and your IP is being traced right now so you ' \
-             'better prepare for the storm, maggot. The storm that wipes out the pathetic little thing you call your ' \
-             'life. You’re fucking dead, kid. I can be anywhere, anytime, and I can kill you in over seven hundred ' \
-             'ways, and that’s just with my bare hands. Not only am I extensively trained in unarmed combat, ' \
-             'but I have access to the entire arsenal of the United States Marine Corps and I will use it to its full ' \
-             'extent to wipe your miserable ass off the face of the continent, you little shit. If only you could ' \
-             'have known what unholy retribution your little “clever” comment was about to bring down upon you, ' \
-             'maybe you would have held your fucking tongue. But you couldn’t, you didn’t, and now you’re paying the ' \
-             'price, you goddamn idiot. I will shit fury all over you and you will drown in it. You’re fucking dead, ' \
-             'kiddo. '.lower()
-    mc = MarkovChain()
+    from pprint import pprint
+    bot = Bot(description='blyatboi chain test', command_prefix='>', pm_help=True)
+    #setup(bot)
+    user_chains: DefaultDict[str, MarkovUser] = defaultdict(MarkovUser)
 
-    mc.add(corpus)
-    print(mc.completeness)
-    for i in range(10):
-        print(untokenize(mc.generate_indefinite()))
+    print('starting botboi')
+    @bot.event
+    async def on_ready():
+        print('Building markov chains...')
+        for server in bot.servers:
+            print(f'Finding channels in {server}')
+            for channel in server.channels:
+                print(f'Finding messages in {channel}')
+                try:
+                    async for msg in bot.logs_from(channel, limit=CHANNEL_MSG_LIMIT):
+                        print(f'Found message in {server}#{channel} from {msg.author.id}')
+                        user_chains[msg.author.id].add_message(msg)
+                except discord.Forbidden as e:
+                    print(f'Error: cannot read from {channel} because forbidden')
+        pprint({u: user_chains[u].chain.table for u in user_chains})
+        #bot.close()
+
+    bot.run(os.environ.get('TOKEN'))
