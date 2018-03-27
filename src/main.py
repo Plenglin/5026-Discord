@@ -16,5 +16,5 @@ async def on_ready():
 
 bot.load_extension('swear_finder')
 bot.load_extension('cancer_finder')
-bot.load_extension('markovcog')
+#bot.load_extension('markovcog')
 bot.run(os.environ.get('TOKEN'))

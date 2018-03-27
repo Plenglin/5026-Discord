@@ -9,7 +9,7 @@ from discord.ext.commands import Context
 
 SWEAR_TABLE = 'swears'
 
-SWEAR_WORDS = 'fuck shit cunt asshole'.split()
+SWEAR_WORDS = 'fuck shit cunt asshole fuk shite'.split()
 MESSAGES = [
     'hey hey be nice {mention}',
     'no swears {mention}',
