@@ -32,7 +32,7 @@ class SwearJar:
         self.connection = pg.connect(os.environ.get('DATABASE_URL'))
 
     async def on_message(self, message):
-        if message.author.id != self.bot.id and is_swear(message.content):
+        if message.author.id != self.bot.user.id and is_swear(message.content):
             log.info('Detected a swear from %s', message.author.name)
             await self.bot.send_message(message.channel, random.choice(MESSAGES).format(mention=message.author.mention))
             cursor = self.connection.cursor()

@@ -1,4 +1,5 @@
 import itertools
+import json
 import logging
 import random
 import string
@@ -14,9 +15,9 @@ from discord.ext.commands import Bot
 log = logging.getLogger(__name__)
 
 WORD_CHARS = string.ascii_lowercase + string.digits + "'’"
-DELIMITER = string.whitespace + string.punctuation.replace("'", '')
-PUNCTUABLE = string.punctuation.replace("'", '')
-
+SENTENCE_DELIMITER = '.?!;'
+NON_STOP_PUNCTUATION = [c for c in string.punctuation if c not in SENTENCE_DELIMITER and c not in WORD_CHARS]
+PUNCTUATION = list(SENTENCE_DELIMITER) + NON_STOP_PUNCTUATION
 
 CHANNEL_MSG_LIMIT = 500
 MIN_COMPLETENESS = 50
@@ -32,7 +33,7 @@ def tokenize(text):
             if len(word_buf) > 0:
                 tokens.append(''.join(word_buf))
             word_buf.clear()
-            if c in PUNCTUABLE:
+            if c in PUNCTUATION:
                 tokens.append(c)
     return tokens
 
@@ -40,8 +41,9 @@ def tokenize(text):
 def untokenize(tokens):
     out_buf = []
     for t in tokens:
-        if t in PUNCTUABLE:
+        if t in PUNCTUATION:
             out_buf.append(t)
+            out_buf.append(' ')
         else:
             if len(out_buf) > 0:
                 out_buf.append(' ')
@@ -55,7 +57,7 @@ class MarkovChain:
         self.table: DefaultDict[str, Counter] = defaultdict(Counter)
         self.completeness = 0
 
-    def add(self, sentence, stops='.?!'):
+    def add(self, sentence, stops=SENTENCE_DELIMITER):
         tokens = [None] + tokenize(sentence.lower()) + [None]
         for i in range(len(tokens) - 1):
             token, following = tokens[i], tokens[i + 1]
@@ -81,6 +83,10 @@ class MarkovChain:
             yield word
             word = self.pick_random_after(word)
             i += 1
+
+    def to_json(self):
+        data = {w: {f: n for f, n in k.items()} for w, k in self.table.items()}
+        return json.dumps(data)
 
 
 class MarkovUser:
@@ -119,7 +125,7 @@ class MarkovCog:
                             self.user_chains[msg.author.id].add_message(msg)
                 except discord.Forbidden as e:
                     log.debug(f'Error: cannot read from {channel} because forbidden')
-        log.info('Finished building markov chains: %s', self.user_chains)
+        log.info('Finished building markov chains: %s', {u: c.chain.to_json() for u, c in self.user_chains.items()})
 
     async def on_message(self, msg: Message):
         if msg.author.id != self.bot.user.id:
