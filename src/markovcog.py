@@ -35,6 +35,7 @@ def tokenize(text):
             word_buf.clear()
             if c in PUNCTUATION:
                 tokens.append(c)
+    tokens.append(''.join(word_buf))
     return tokens
 
 
@@ -149,25 +150,6 @@ def setup(bot):
 
 if __name__ == '__main__':
     from pprint import pprint
-    bot = Bot(description='blyatboi chain test', command_prefix='>', pm_help=True)
-    #setup(bot)
-    user_chains: DefaultDict[str, MarkovUser] = defaultdict(MarkovUser)
-
-    print('starting botboi')
-    @bot.event
-    async def on_ready():
-        print('Building markov chains...')
-        for server in bot.servers:
-            print(f'Finding channels in {server}')
-            for channel in server.channels:
-                print(f'Finding messages in {channel}')
-                try:
-                    async for msg in bot.logs_from(channel, limit=CHANNEL_MSG_LIMIT):
-                        print(f'Found message in {server}#{channel} from {msg.author.id}')
-                        user_chains[msg.author.id].add_message(msg)
-                except discord.Forbidden as e:
-                    print(f'Error: cannot read from {channel} because forbidden')
-        pprint({u: user_chains[u].chain.table for u in user_chains})
-        #bot.close()
-
-    bot.run(os.environ.get('TOKEN'))
+    mc = MarkovChain()
+    mc.add('a b c d e f')
+    print(untokenize(mc.generate_indefinite()))
