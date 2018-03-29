@@ -4,13 +4,11 @@ import logging
 import random
 import string
 from collections import defaultdict, Counter
-from typing import Dict, DefaultDict
+from typing import DefaultDict
 
 import discord
-import os
-from discord.ext import commands
 from discord import Message
-from discord.ext.commands import Bot
+from discord.ext import commands
 
 log = logging.getLogger(__name__)
 
@@ -21,6 +19,7 @@ PUNCTUATION = list(SENTENCE_DELIMITER) + NON_STOP_PUNCTUATION
 
 CHANNEL_MSG_LIMIT = 500
 MIN_COMPLETENESS = 50
+MIN_WORDS = 3
 
 
 def tokenize(text):
@@ -77,7 +76,7 @@ class MarkovChain:
         i = random.randrange(sum(words))
         return next(itertools.islice(counter.elements(), i, None))
 
-    def generate_indefinite(self, limit=100, stop_at=list('.!?') + [None]):
+    def generate(self, limit=100, stop_at=list('.!?') + [None]):
         word = self.pick_random_after(None, allow_none=False)
         i = 0
         while word not in stop_at and i < limit:
@@ -137,7 +136,9 @@ class MarkovCog:
         mc = self.user_chains[user.id].chain
         log.debug(f'{user.id} has completeness {mc.completeness}')
         if mc.completeness > MIN_COMPLETENESS:
-            tokens = mc.generate_indefinite()
+            tokens = tuple()
+            while len(tokens) < MIN_WORDS:
+                tokens = mc.generate()
             log.debug('made tokens %s', tokens)
             await self.bot.say(f'"{untokenize(tokens)}" --_{user.mention}_')
         else:
@@ -149,7 +150,6 @@ def setup(bot):
 
 
 if __name__ == '__main__':
-    from pprint import pprint
     mc = MarkovChain()
     mc.add('a b c d e f')
-    print(untokenize(mc.generate_indefinite()))
+    print(untokenize(mc.generate()))
