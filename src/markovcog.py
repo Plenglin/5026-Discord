@@ -138,7 +138,7 @@ class MarkovCog:
         if mc.completeness > MIN_COMPLETENESS:
             tokens = tuple()
             while len(tokens) < MIN_WORDS:
-                tokens = mc.generate()
+                tokens = list(mc.generate())
             log.debug('made tokens %s', tokens)
             await self.bot.say(f'"{untokenize(tokens)}" --_{user.mention}_')
         else:
