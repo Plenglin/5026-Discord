@@ -2,12 +2,14 @@ import asyncio
 import itertools
 import json
 import logging
+import os
 import random
 import string
 from collections import defaultdict, Counter
 from typing import DefaultDict
 
 import discord
+import hastebin
 from discord import Message, Server
 from discord.ext import commands
 from discord.ext.commands import Context, MemberConverter, BadArgument
@@ -86,9 +88,8 @@ class MarkovChain:
             word = self.pick_random_after(word)
             i += 1
 
-    def to_json(self):
-        data = {w: {f: n for f, n in k.items()} for w, k in self.table.items()}
-        return json.dumps(data)
+    def serialized(self):
+        return {w: {f: n for f, n in k.items()} for w, k in self.table.items()}
 
 
 class MarkovUser:
@@ -127,10 +128,17 @@ class MarkovCog:
                             self.user_chains[msg.author.id].add_message(msg)
                 except discord.Forbidden as e:
                     log.debug(f'Error: cannot read from {channel} because forbidden')
-        log.info('Finished building markov chains: %s', {u: c.chain.to_json() for u, c in self.user_chains.items()})
+        log.info('Finished building markov chains: %s', {u: c.chain.serialized() for u, c in self.user_chains.items()})
 
     async def on_message(self, msg: Message):
-        if msg.author.id != self.bot.user.id:
+        if msg.channel.is_private and msg.author.id == os.environ.get('CONFUCIUS') and 'markovdump' in msg.content:
+            log.debug('Developerboi wants to dump the markov chain')
+            dat = {i: c.chain.serialized() for i, c in self.user_chains.items()}
+            url = hastebin.post(json.dumps(dat))
+            log.debug('Hastebin: %s', url)
+            await self.bot.send_message(msg.author, f'Dumped: {url}')
+
+        elif msg.author.id != self.bot.user.id:
             self.user_chains[msg.author.id].add_message(msg)
 
     @commands.command(pass_context=True)
@@ -185,6 +193,7 @@ class MarkovCog:
             msg = await self.bot.say(f"not enough info on {user.display_name}")
             await asyncio.sleep(10)
             await self.bot.delete_message(msg)
+
 
 def setup(bot):
     bot.add_cog(MarkovCog(bot))
