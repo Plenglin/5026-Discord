@@ -1,3 +1,4 @@
+import asyncio
 import itertools
 import json
 import logging
@@ -7,8 +8,9 @@ from collections import defaultdict, Counter
 from typing import DefaultDict
 
 import discord
-from discord import Message
+from discord import Message, Server
 from discord.ext import commands
+from discord.ext.commands import Context, MemberConverter, BadArgument
 
 log = logging.getLogger(__name__)
 
@@ -131,8 +133,46 @@ class MarkovCog:
         if msg.author.id != self.bot.user.id:
             self.user_chains[msg.author.id].add_message(msg)
 
-    @commands.command()
-    async def markov(self, user: discord.Member):
+    @commands.command(pass_context=True)
+    async def markov(self, ctx: Context, arg):
+        try:
+            log.debug('attempting to find mention')
+            user = MemberConverter(ctx, arg).convert()
+            await self._markov(user)
+        except BadArgument:
+            log.debug('there was no mention, resorting to search')
+            res = await self._find_applicable_user(ctx.message.server, arg)
+            if res is not None:
+                await self._markov(res)
+
+    async def _find_applicable_user(self, server: Server, name: str):
+        log.debug('finding users who start with %s', name)
+        users = [m for m in server.members if m.display_name.lower().startswith(name.lower())]
+        if len(users) == 0:
+            log.debug('no one starts with %s', name)
+            msg = await self.bot.say(f'There are no users that start with {name}, please try again')
+            await asyncio.sleep(10)
+            await self.bot.delete_message(msg)
+            return
+
+        if len(users) == 1:
+            log.debug('one dude starts with %s', name)
+            user = users[0]
+        else:
+            for u in users:
+                if u.display_name == name:
+                    log.debug("one dude's name is exactly %s", name)
+                    user = u
+                    break
+            else:
+                log.debug('there are multiple users that start with %s', name)
+                msg = await self.bot.say(f'There are multiple users that start with {name}, please be more specific')
+                await asyncio.sleep(10)
+                await self.bot.delete_message(msg)
+                return
+        return user
+
+    async def _markov(self, user: discord.Member):
         mc = self.user_chains[user.id].chain
         log.debug(f'{user.id} has completeness {mc.completeness}')
         if mc.completeness > MIN_COMPLETENESS:
@@ -140,10 +180,11 @@ class MarkovCog:
             while len(tokens) < MIN_WORDS:
                 tokens = list(mc.generate())
             log.debug('made tokens %s', tokens)
-            await self.bot.say(f'"{untokenize(tokens)}" --_{user.mention}_')
+            await self.bot.say(f'"{untokenize(tokens)}" --_probably {user.display_name}_')
         else:
-            await self.bot.say(f"not enough info on {user.mention}")
-
+            msg = await self.bot.say(f"not enough info on {user.display_name}")
+            await asyncio.sleep(10)
+            await self.bot.delete_message(msg)
 
 def setup(bot):
     bot.add_cog(MarkovCog(bot))
