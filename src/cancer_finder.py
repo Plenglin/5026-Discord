@@ -5,7 +5,7 @@ import re
 import discord
 from discord import Message
 
-CANCER_REGEX = r'([ck]\w*n\w*[ck]\w*r)'
+CANCER_REGEX = r'([ck]\w*n\w*[ck]\w*r)[ .?!]'
 log = logging.getLogger(__name__)
 
 
